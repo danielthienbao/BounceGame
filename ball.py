@@ -16,16 +16,22 @@ class Ball:
         if self.rect.top <= 0 or self.rect.bottom >= 600:
             self.speed_y *= -1
 
-        # Ball bounce paddles
-        if self.rect.colliderect(paddle1_rect):
+        # Ball bounce off the paddles (adjust angle based on hit location)
+        if self.rect.colliderect(paddle1_rect) or self.rect.colliderect(paddle2_rect):
+            paddle_center = paddle1_rect.centery if self.rect.colliderect(paddle1_rect) else paddle2_rect.centery
+            hit_diff = self.rect.centery - paddle_center
+            angle = hit_diff / paddle1_rect.height  # Normalize the hit position
             self.speed_x *= -1
-            self.owner = 'left'  # Mark the owner when colliding with left paddle
-        elif self.rect.colliderect(paddle2_rect):
-            self.speed_x *= -1
-            self.owner = 'right'  # Mark the owner when colliding with right paddle
+            self.speed_y += angle * 10  # Adjust Y speed based on where it hits the paddle
 
     def is_out_of_bounds(self):
-        return self.rect.left <= 0 or self.rect.right >= 800
+        if self.rect.left <= 0:
+            self.owner = 'right'  # Right side scores
+            return True
+        elif self.rect.right >= 800:
+            self.owner = 'left'   # Left side scores
+            return True
+        return False
 
     def draw(self, screen):
         pygame.draw.ellipse(screen, (255, 255, 255), self.rect)
