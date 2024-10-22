@@ -15,6 +15,6 @@ class Scoreboard:
         return self.score1 >= 10 or self.score2 >= 10
 
     def draw(self, screen, width):
-        font = pygame.font.Font(None, 36)
+        font = pygame.font.Font(None, 54)
         score_text = font.render(f"{self.score1} : {self.score2}", True, (255, 255, 255))
         screen.blit(score_text, (width // 2 - score_text.get_width() // 2, 20))

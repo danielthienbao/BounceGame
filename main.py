@@ -5,20 +5,27 @@ from paddle import Paddle
 from ball import Ball
 from powerup import PowerUp, SlowPaddlePowerUp
 from scoreboard import Scoreboard
+from border import draw_border
 
 pygame.init()
 
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1200, 900
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Two Player Bounce Game')
+GOAL_TOP = HEIGHT // 2 - 200
+GOAL_BOTTOM = HEIGHT // 2 + 200
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 clock = pygame.time.Clock()
 
-paddle1 = Paddle(10, HEIGHT // 2)
-paddle2 = Paddle(WIDTH - 20, HEIGHT // 2)
+# Center line boundary for paddles
+CENTER_X = WIDTH // 2
+
+# Create paddles (left and right)
+paddle1 = Paddle(10, HEIGHT // 2)  # Adjust X based on width scaling
+paddle2 = Paddle(WIDTH - 20, HEIGHT // 2)  # Adjust X based on width scaling
 
 # Initialize balls
 balls = [Ball(WIDTH // 2, HEIGHT // 2)]
@@ -28,11 +35,6 @@ scoreboard = Scoreboard()
 power_ups = []
 power_up_spawn_time = random.randint(1, 5) * 1000  # in milliseconds
 last_power_up_spawn = pygame.time.get_ticks()
-
-# To keep track of the last two paddles that touched the ball
-last_touched_paddle = None
-second_to_last_touched_paddle = None
-
 
 # Main game loop
 while True:
@@ -48,9 +50,11 @@ while True:
             paddle1.color = (255, 255, 255)  # Reset to original color
             paddle2.color = (255, 255, 255)  # Reset to original color
 
-    keys = pygame.key.get_pressed()
-    paddle1.move(pygame.K_w, pygame.K_s)  # Move W/S
-    paddle2.move(pygame.K_UP, pygame.K_DOWN)  # Move Up/Down arrows
+    # Move paddles (WASD for left, Arrow Keys for right)
+    paddle1.move(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, True, WIDTH)
+
+    paddle2.move(pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, False, WIDTH)
+
 
     # Manage power-up spawning
     current_time = pygame.time.get_ticks()
@@ -65,40 +69,15 @@ while True:
     # Power-up collision with paddles
     for power_up in power_ups[:]:
         if power_up.rect.colliderect(paddle1.rect):
-            print("Paddle 1 hit a power-up!")
-            power_up.activate(paddle1, balls)  # Only affect the paddle that activated the power-up
-            power_ups.remove(power_up)   # Remove power-up after activation
+            power_up.activate(paddle1, balls)
+            power_ups.remove(power_up)
         elif power_up.rect.colliderect(paddle2.rect):
-            print("Paddle 2 hit a power-up!")
-            power_up.activate(paddle2, balls)  # Only affect the paddle that activated the power-up
-            power_ups.remove(power_up)   # Remove power-up after activation
+            power_up.activate(paddle2, balls)
+            power_ups.remove(power_up)
 
-    # Check for ball and power-up collision
+    # Move balls and handle collisions
     for ball in balls[:]:
-        ball.move(paddle1.rect, paddle2.rect)
-
-        # Track which paddles last touched the ball
-        if ball.rect.colliderect(paddle1.rect):
-            second_to_last_touched_paddle = last_touched_paddle
-            last_touched_paddle = paddle1
-        elif ball.rect.colliderect(paddle2.rect):
-            second_to_last_touched_paddle = last_touched_paddle
-            last_touched_paddle = paddle2
-
-        # Check for ball and power-up collision
-        for power_up in power_ups[:]:
-            if ball.rect.colliderect(power_up.rect):
-                print("Ball hit a power-up!")
-
-                # Activate power-up effect (for SlowPaddlePowerUp, etc.)
-                if isinstance(power_up, SlowPaddlePowerUp):
-                    if second_to_last_touched_paddle:  # Ensure a paddle has been touched
-                        power_up.activate(second_to_last_touched_paddle, balls)  # Pass the second-to-last paddle
-                else:
-                    power_up.activate(paddle2 if ball.rect.centerx < WIDTH // 2 else paddle1, balls)  # For normal power-ups
-                
-                # Remove power-up after activation
-                power_ups.remove(power_up)
+        ball.move(paddle1.rect, paddle2.rect, GOAL_TOP, GOAL_BOTTOM, WIDTH)
 
         # Check if ball is out of bounds
         if ball.is_out_of_bounds():
@@ -115,11 +94,18 @@ while True:
 
     # Game elements
     screen.fill(BLACK)
+    draw_border(screen, WIDTH, HEIGHT)
+    # Draw center line
+    pygame.draw.line(screen, WHITE, (WIDTH // 2, 0), (WIDTH // 2, HEIGHT), 8)
+
+
+    # Draw paddles
     paddle1.draw(screen)
     paddle2.draw(screen)
 
-    # Draw the balls
+    # Draw balls
     for ball in balls:
+        ball.move(paddle1.rect, paddle2.rect, GOAL_TOP, GOAL_BOTTOM, WIDTH)  # Pass goal area and screen width
         ball.draw(screen)
 
     # Draw power-ups
